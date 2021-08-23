@@ -1,0 +1,23 @@
+{
+    "go_version":"1.15.6",
+    "build_dir":"build",
+    "out_dir":"out",
+    "go_mobile_dir":"mobile",
+    "go_mobile_flags": [
+        "-x",
+        "-ldflags=\"-s -w\""
+    ],
+    "build_name":"Gopenpgp",
+    "java_pkg":"com.proton.Gopenpgp",
+    "targets":["apple", "android"],
+    "requirements": [
+        {
+            "module":
+            {
+                "path":"github.com/ProtonMail/gopenpgp/v2",
+                "version":"latest"
+            },
+            "packages": ["crypto", "armor", "constants", "models", "subtle", "helper"]
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+module gitlab.protontech.ch/crypto/gomobile-build-script/build
+
+go {{ formatGoVersion .Config.GoVersion}}
+
+require (
+{{formatRequirements .Config.Requirements}}
+    golang.org/x/mobile v0.0.0
+)
+
+{{formatReplacements .Config.Replacements}}
+
+// We need to use a fork to build for macos and macos-ui
+replace golang.org/x/mobile => {{.Config.GoMobileDir}}

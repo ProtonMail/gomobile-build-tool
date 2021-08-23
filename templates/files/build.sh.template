@@ -1,0 +1,153 @@
+#!/bin/bash
+
+set -ue pipefail  # End the script if any command, or intermediate command,
+                  # returns an error code.
+
+trap failed_build EXIT
+
+# Colors for terminal display
+red="\e[0;31m"
+green="\e[0;32m"
+reset="\033[0m"
+
+# Trap in case something went wrong
+failed_build() {
+    printf "${red}The build failed!\nRun 'make clean' before retrying...\n${reset}"
+}
+
+install_modules()
+{
+	printf "${green}Start installing go modules and their dependencies ${reset}\n\n"
+	GO111MODULE=on go mod download
+	printf "${green}Done ${reset}\n\n"
+}
+
+install_gomobile()
+{
+	printf "${green}Installing gomobile fork${reset}\n\n"
+	{{if (go16orAbove .Config.GoVersion)}}
+	go get golang.org/x/mobile/cmd/gomobile
+	{{end}}
+	go build {{.Config.GoMobileDir}}/cmd/gomobile
+	go build {{.Config.GoMobileDir}}/cmd/gobind
+	PATH=$(pwd):$PATH
+	printf "${green}Done ${reset}\n\n"
+}
+
+{{if (go16orAbove .Config.GoVersion)}}
+get_modules(){
+	for MODULE in $MODULES
+	do
+		go get $MODULE
+	done
+}
+{{end}}
+
+remove_dir()
+{
+	DIR=$1
+	if [ -d "$DIR" ]; then
+		printf "removing old $DIR\n"
+		rm -rf $DIR
+	fi
+}
+
+build()
+{
+	TARGET=$1
+	if [ $TARGET = "android" ]; then
+		{{if .Config.JavaPkg}}
+			JAVAPKG_FLAG="-javapkg={{.Config.JavaPkg}}"
+		{{else}}
+			JAVAPKG_FLAG=""
+		{{end}}
+		OUT_EXTENSION="aar"
+	else
+		JAVAPKG_FLAG=""
+		OUT_EXTENSION="framework"
+	fi
+	TARGET_DIR=${OUT_DIR}/${TARGET}
+	TARGET_OUT_FILE=${TARGET_DIR}/${BUILD_NAME}.${OUT_EXTENSION}
+	mkdir -p $TARGET_DIR
+	printf "${green}Start Building ${TARGET} .. Location: ${TARGET_DIR} ${reset}\n\n"
+	remove_dir $TARGET_OUT_FILE
+	./gomobile bind -tags mobile -target $TARGET $JAVAPKG_FLAG {{formatFlags .Config.GoMobileFlags}} -o ${TARGET_OUT_FILE}  ${PACKAGES}
+}
+
+
+## ======== Config ===============
+
+# ==== Generic parameters ======
+
+# output directory
+OUT_DIR="{{.Config.OutDir}}"
+
+# name of the build output
+BUILD_NAME="{{.Config.BuildName}}"
+
+# ==== Packages to include =====
+{{if (go16orAbove .Config.GoVersion)}}
+MODULES="{{formatModules .Config.Requirements}}"
+{{end}}
+PACKAGES="{{formatPackages .Config.Requirements}}"
+
+######## ======== Main ===========
+
+# We get the needed go modules stated in the go.mod file
+cd {{.Config.BuildDir}};
+
+install_modules
+install_gomobile
+{{if (go16orAbove .Config.GoVersion)}}
+get_modules
+{{end}}
+go env
+echo "PATH=$PATH"
+echo "gomobile:$(which gomobile)"
+
+printf "Packages included : ${PACKAGES}\n"
+## start building
+
+{{if (buildApple .Config.Targets)}}
+# ================= Apple Builds ======================
+# ========== iOS and Simulator =========
+
+# we build the framework for the ios sim on arm64 macs
+
+build ios-simulator
+
+# we build the framework for the ios devices
+build ios
+
+# ========== macOs ====================
+
+# we build the framework for the macos devices
+
+build macos
+
+# ======== macOSUI ===============
+
+# we build the framework for the macos-ui target
+
+build macos-ui
+
+# we join all platform's framework in a xcframework
+XCFRAMEWORK_OUT_FILE=$OUT_DIR/$BUILD_NAME.xcframework
+remove_dir $XCFRAMEWORK_OUT_FILE;
+xcodebuild -create-xcframework \
+ -framework $OUT_DIR/ios/$BUILD_NAME.framework \
+ -framework $OUT_DIR/macos/$BUILD_NAME.framework \
+ -framework $OUT_DIR/macos-ui/$BUILD_NAME.framework \
+ -framework $OUT_DIR/ios-simulator/$BUILD_NAME.framework \
+ -output $XCFRAMEWORK_OUT_FILE
+
+{{end}}
+
+{{if (buildAndroid .Config.Targets)}}
+# ================  Android Build =====================
+build android
+
+printf "${green}All Done. ${reset}\n\n"
+{{end}}
+
+trap - EXIT
