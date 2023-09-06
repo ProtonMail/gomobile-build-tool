@@ -7,17 +7,19 @@ import (
 )
 
 type Config struct {
-	BuildDir      string        `json:"build_dir"`
-	OutDir        string        `json:"out_dir"`
-	GoMobileDir   string        `json:"go_mobile_dir"`
-	Requirements  []Requirement `json:"requirements"`
-	Replacements  []Replacement `json:"replacements"`
-	GoMobileFlags []string      `json:"go_mobile_flags"`
-	BuildName     string        `json:"build_name"`
-	Targets       []string      `json:"targets"`
-	JavaPkg       string        `json:"java_pkg"`
-	GoVersion     string        `json:"go_version"`
-	BuildTag      string        `json:"build_tag"`
+	BuildDir        string        `json:"build_dir"`
+	OutDir          string        `json:"out_dir"`
+	GoMobileDir     string        `json:"go_mobile_dir"`
+	Requirements    []Requirement `json:"requirements"`
+	Replacements    []Replacement `json:"replacements"`
+	GoMobileFlags   []string      `json:"go_mobile_flags"`
+	BuildName       string        `json:"build_name"`
+	Targets         []string      `json:"targets"`
+	JavaPkg         string        `json:"java_pkg"`
+	GoVersion       string        `json:"go_version"`
+	BuildTag        string        `json:"build_tag"`
+	MinIOSVersion   string        `json:"min_ios_version"`
+	MinMacOSVersion string        `json:"min_macos_version"`
 }
 
 type Requirement struct {

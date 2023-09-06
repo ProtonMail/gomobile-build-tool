@@ -1,3 +1,4 @@
 [submodule "mobile"]
 	path = mobile
 	url = https://github.com/ProtonMail/go-mobile
+	branch = tmp/refresh-gomobile-2

@@ -39,6 +39,7 @@ We provide a few example configuration files in `examples/`.
 - `"build_name"` : the name of the produced artifacts
 - `"build_tag"` : Used by gitlab automated builds to tag the builds
 - `"java_pkg"` : (for android) the name of the java package representing the go code, it defaults to the `"build_name"`.
+- `"min_ios_version"`: (for ios) the minimum version of iOS we want to support. (Forwarded to the `-iosversion` option of gomobile)
 - `"targets"`: a list of platforms (`"android"` and `"apple"`) to build artifacts for, if not provided, the program builds for both platforms.
 - `"requirements"` : used to specify a list of packages to include in the artifacts.
     - `"module"`: the go module containing the package

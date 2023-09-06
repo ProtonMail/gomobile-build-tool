@@ -2,6 +2,7 @@
 
 set -ue pipefail  # End the script if any command, or intermediate command,
                   # returns an error code.
+set -x
 
 trap failed_build EXIT
 
@@ -26,7 +27,8 @@ install_gomobile()
 {
 	printf "${green}Installing gomobile fork${reset}\n\n"
 	{{if (go16orAbove .Config.GoVersion)}}
-	go get golang.org/x/mobile/cmd/gomobile
+	go get golang.org/x/mobile/cmd/gomobile@v0.0.0
+	go get golang.org/x/mobile/cmd/gobind@v0.0.0
 	{{end}}
 	go build {{.Config.GoMobileDir}}/cmd/gomobile
 	go build {{.Config.GoMobileDir}}/cmd/gobind
@@ -55,6 +57,8 @@ remove_dir()
 build()
 {
 	TARGET=$1
+	OUTPUT_DIR=$2
+	TAGS="mobile"
 	if [ $TARGET = "android" ]; then
 		{{if .Config.JavaPkg}}
 			JAVAPKG_FLAG="-javapkg={{.Config.JavaPkg}}"
@@ -62,16 +66,29 @@ build()
 			JAVAPKG_FLAG=""
 		{{end}}
 		OUT_EXTENSION="aar"
+		IOS_VERSION_FLAG=""
+		MACOS_VERSION_FLAG=""
 	else
 		JAVAPKG_FLAG=""
-		OUT_EXTENSION="framework"
+		{{if .Config.MinIOSVersion}}
+			IOS_VERSION_FLAG="-iosversion={{.Config.MinIOSVersion}}"
+		{{else}}
+			IOS_VERSION_FLAG=""
+		{{end}}
+		{{if .Config.MinMacOSVersion}}
+			MACOS_VERSION_FLAG="-macosversion={{.Config.MinMacOSVersion}}"
+		{{else}}
+			MACOS_VERSION_FLAG=""
+		{{end}}
+		OUT_EXTENSION="xcframework"
+		TAGS="$TAGS,ios"
 	fi
-	TARGET_DIR=${OUT_DIR}/${TARGET}
+	TARGET_DIR=${OUT_DIR}/${OUTPUT_DIR}
 	TARGET_OUT_FILE=${TARGET_DIR}/${BUILD_NAME}.${OUT_EXTENSION}
 	mkdir -p $TARGET_DIR
 	printf "${green}Start Building ${TARGET} .. Location: ${TARGET_DIR} ${reset}\n\n"
 	remove_dir $TARGET_OUT_FILE
-	./gomobile bind -tags mobile -target $TARGET $JAVAPKG_FLAG {{formatFlags .Config.GoMobileFlags}} -o ${TARGET_OUT_FILE}  ${PACKAGES}
+	./gomobile bind -tags $TAGS -target $TARGET $JAVAPKG_FLAG $IOS_VERSION_FLAG $MACOS_VERSION_FLAG {{formatFlags .Config.GoMobileFlags}} -o ${TARGET_OUT_FILE}  ${PACKAGES}
 }
 
 
@@ -110,42 +127,14 @@ printf "Packages included : ${PACKAGES}\n"
 
 {{if (buildApple .Config.Targets)}}
 # ================= Apple Builds ======================
-# ========== iOS and Simulator =========
-
-# we build the framework for the ios sim on arm64 macs
-
-build ios-simulator
-
-# we build the framework for the ios devices
-build ios
-
-# ========== macOs ====================
-
-# we build the framework for the macos devices
-
-build macos
-
-# ======== macOSUI ===============
-
-# we build the framework for the macos-ui target
-
-build macos-ui
-
-# we join all platform's framework in a xcframework
-XCFRAMEWORK_OUT_FILE=$OUT_DIR/$BUILD_NAME.xcframework
-remove_dir $XCFRAMEWORK_OUT_FILE;
-xcodebuild -create-xcframework \
- -framework $OUT_DIR/ios/$BUILD_NAME.framework \
- -framework $OUT_DIR/macos/$BUILD_NAME.framework \
- -framework $OUT_DIR/macos-ui/$BUILD_NAME.framework \
- -framework $OUT_DIR/ios-simulator/$BUILD_NAME.framework \
- -output $XCFRAMEWORK_OUT_FILE
+# we build the framework for the ios devices and simulator
+build ios,iossimulator,maccatalyst,macos apple
 
 {{end}}
 
 {{if (buildAndroid .Config.Targets)}}
 # ================  Android Build =====================
-build android
+build android android
 
 printf "${green}All Done. ${reset}\n\n"
 {{end}}
